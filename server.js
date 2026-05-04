@@ -3,21 +3,30 @@ import cors from "cors";
 import axios from "axios";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Fix untuk ES Module path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+
+// Serve static files (HTML, CSS, JS)
+app.use(express.static(__dirname));
 
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 40,
-  message: { error: "Terlalu banyak permintaan, silakan tunggu sebentar." }
+  message: { error: "Terlalu banyak permintaan, silakan tunggu." }
 });
 app.use("/api", limiter);
 
@@ -61,7 +70,7 @@ async function getVioResponse(version, prompt) {
   }
 }
 
-// Routes
+// API Route
 app.post("/api/vio", async (req, res) => {
   const { version, prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "Prompt tidak boleh kosong" });
@@ -70,10 +79,12 @@ app.post("/api/vio", async (req, res) => {
   res.json({ success: true, ai: "Vio", ...data });
 });
 
-app.get("/", (req, res) => {
-  res.send("✅ Vio AI Server is running!");
+// Serve index.html untuk semua route
+app.get("*", (req, res) => {
+  res.sendFile(join(__dirname, "index.html"));
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Vio AI Server berjalan di port ${PORT}`);
+  console.log(`🚀 Vio AI Server berjalan di http://localhost:${PORT}`);
+  console.log(`✅ Buka browser → http://localhost:${PORT}`);
 });
