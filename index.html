@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vio AI - Asisten Cerdas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+<div class="flex h-screen">
+  <!-- Sidebar -->
+  <div class="w-72 bg-gray-900 border-r border-gray-800 flex flex-col">
+    <div class="p-6 border-b border-gray-800">
+      <h1 class="text-3xl font-bold text-indigo-400 flex items-center gap-3">
+        <i class="fas fa-robot"></i> Vio AI
+      </h1>
+    </div>
+
+    <div class="p-4">
+      <button onclick="newChat()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3.5 rounded-2xl font-medium flex items-center justify-center gap-2">
+        <i class="fas fa-plus"></i> Chat Baru
+      </button>
+    </div>
+
+    <div class="px-4 mb-4">
+      <p class="text-xs text-gray-400 mb-2">PILIH MODEL VIO</p>
+      <div class="grid grid-cols-2 gap-2" id="model-selector"></div>
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div class="flex-1 flex flex-col">
+    <div class="h-16 border-b border-gray-800 bg-gray-900 flex items-center px-6">
+      <div id="current-model" class="px-5 py-2 bg-gray-800 rounded-3xl text-sm font-medium">
+        Vio K2.5 (Advanced)
+      </div>
+    </div>
+
+    <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-950"></div>
+
+    <div class="p-6 bg-gray-900 border-t border-gray-800">
+      <textarea id="prompt-input" rows="3"
+        class="w-full bg-gray-800 border border-gray-700 rounded-3xl px-6 py-5 focus:outline-none focus:border-indigo-500 resize-none"
+        placeholder="Ketikan pesan Anda ke Vio..."></textarea>
+      
+      <button onclick="sendMessage()" 
+              class="mt-4 bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-2xl font-medium flex items-center gap-2">
+        <i class="fas fa-paper-plane"></i> Kirim
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentModel = "K2.5";
+const models = ["K1.5", "K2", "K2.5", "K3"];
+
+function renderModels() {
+  document.getElementById("model-selector").innerHTML = models.map(m => `
+    <button onclick="selectModel('${m}')" 
+            class="p-4 rounded-2xl text-left transition-all ${currentModel === m ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}">
+      <div class="font-semibold">Vio ${m}</div>
+    </button>
+  `).join('');
+}
+
+function selectModel(model) {
+  currentModel = model;
+  document.getElementById("current-model").textContent = `Vio ${model}`;
+  renderModels();
+}
+
+async function sendMessage() {
+  const input = document.getElementById("prompt-input");
+  const prompt = input.value.trim();
+  if (!prompt) return;
+
+  const chatContainer = document.getElementById("chat-container");
+
+  // Pesan User
+  chatContainer.innerHTML += `
+    <div class="flex justify-end mb-4">
+      <div class="max-w-[75%] bg-indigo-600 px-5 py-3 rounded-3xl rounded-tr-none">${prompt}</div>
+    </div>
+  `;
+
+  input.value = "";
+
+  // Loading
+  const loadingId = "loading-" + Date.now();
+  chatContainer.innerHTML += `
+    <div id="${loadingId}" class="flex gap-3 mb-4">
+      <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center text-xl">V</div>
+      <div class="bg-gray-800 px-5 py-3 rounded-3xl rounded-tl-none">Vio sedang berpikir...</div>
+    </div>
+  `;
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  try {
+    const res = await fetch('/api/vio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ version: currentModel, prompt })
+    });
+
+    const data = await res.json();
+
+    document.getElementById(loadingId).remove();
+
+    chatContainer.innerHTML += `
+      <div class="flex gap-3 mb-4">
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center text-xl">V</div>
+        <div class="max-w-[75%] bg-gray-800 px-5 py-3 rounded-3xl rounded-tl-none whitespace-pre-wrap">${data.result}</div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById(loadingId).innerHTML = `<span class="text-red-400">❌ Server tidak terhubung</span>`;
+  }
+
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function newChat() {
+  if (confirm("Buat percakapan baru?")) {
+    document.getElementById("chat-container").innerHTML = `<p class="text-center text-gray-500 mt-32">Percakapan baru dimulai ✅</p>`;
+  }
+}
+
+// Inisialisasi
+renderModels();
+</script>
+</body>
+</html>
